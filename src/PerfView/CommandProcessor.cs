@@ -454,11 +454,11 @@ namespace PerfView
                 if (parsedArgs.CpuCounters != null)
                 {
                     SetCpuCounters(parsedArgs.CpuCounters);
-                    parsedArgs.KernelEvents |= KernelTraceEventParser.Keywords.PMCProfile;
+                    parsedArgs.KernelEventsGroup1 |= KernelTraceEventParser.KeywordsGroup1.PMCProfile;
                 }
                 else
                 {
-                    if ((parsedArgs.KernelEvents & KernelTraceEventParser.Keywords.PMCProfile) != 0)
+                    if ((parsedArgs.KernelEventsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
                     {
                         throw new ApplicationException("The PMCProfile should not be set explicitly.  Simply set the CpuCounters.");
                     }

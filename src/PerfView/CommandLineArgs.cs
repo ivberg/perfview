@@ -116,6 +116,7 @@ namespace PerfView
         public int CircularMB;
         public bool InMemoryCircularBuffer;         // Uses EVENT_TRACE_BUFFERING_MODE for an in-memory circular buffer
         public KernelTraceEventParser.Keywords KernelEvents = KernelTraceEventParser.Keywords.Default;
+        public KernelTraceEventParser.KeywordsGroup1 KernelEventsGroup1 = KernelTraceEventParser.KeywordsGroup1.None;
         public string[] CpuCounters;        // Specifies any profile sources (CPU counters) to turn on (Win 8 only)
         public ClrTraceEventParser.Keywords ClrEvents = ClrTraceEventParser.Keywords.Default;
         public TraceEventLevel ClrEventLevel = Microsoft.Diagnostics.Tracing.TraceEventLevel.Verbose;    // The verbosity of CLR events

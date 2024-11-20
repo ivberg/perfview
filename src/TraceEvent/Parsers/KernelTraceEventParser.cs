@@ -55,50 +55,50 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
             /// Logs nothing
             /// </summary>
             None = 0x00000000, // no tracing
-            // Part of the 'default set of keywords' (good value in most scenarios).  
-            /// <summary>
-            /// Logs the mapping of file IDs to actual (kernel) file names. 
-            /// </summary>
-            DiskFileIO = 0x00000200,
-            /// <summary>
-            /// Loads the completion of Physical disk activity. 
-            /// </summary>
-            DiskIO = 0x00000100, // physical disk IO
-            /// <summary>
-            /// Logs native modules loads (LoadLibrary), and unloads
-            /// </summary>
-            ImageLoad = 0x00000004, // image load
-            /// <summary>
-            /// Logs all page faults that must fetch the data from the disk (hard faults)
-            /// </summary>
-            MemoryHardFaults = 0x00002000,
-            /// <summary>
-            /// Logs TCP/IP network send and receive events. 
-            /// </summary>
-            NetworkTCPIP = 0x00010000,
             /// <summary>
             /// Logs process starts and stops.
             /// </summary>
             Process = 0x00000001,
             /// <summary>
+            /// Logs threads starts and stops
+            /// </summary>
+            Thread = 0x00000002,
+            /// <summary>
+            /// Logs native modules loads (LoadLibrary), and unloads
+            /// </summary>
+            ImageLoad = 0x00000004, // image load
+            /// <summary>
             /// Logs process performance counters (TODO When?) (Vista+ only)
             /// see KernelTraceEventParser.ProcessPerfCtr, ProcessPerfCtrTraceData
             /// </summary>
             ProcessCounters = 0x00000008,
-            /// <summary>
-            /// Sampled based profiling (every msec) (Vista+ only) (expect 1K events per proc per second)
-            /// </summary>
-            Profile = 0x01000000,
-            /// <summary>
-            /// Logs threads starts and stops
-            /// </summary>
-            Thread = 0x00000002,
-
             // These are useful in some situations, however are more volumous so are not part of the default set. 
             /// <summary>
-            /// log thread context switches (Vista only) (can be > 10K events per second)
+            /// log thread context switches (CSWITCH) (Vista+ only) (can be > 10K events per second)
             /// </summary>
             ContextSwitch = 0x00000010,
+            /// <summary>
+            /// log defered procedure calls (DPC) (an Kernel mechanism for having work done asynchronously) (Vista+ only)
+            /// </summary> 
+            DeferedProcedureCalls = 0x00000020,
+            /// <summary>
+            /// log hardware interrupts. (Vista+ only)
+            /// </summary>
+            Interrupt = 0x00000040,
+            /// <summary>
+            /// log calls to the OS (Vista+ only)
+            /// This is VERY volumous (can be > 100K events per second)
+            /// </summary>
+            SystemCall = 0x00000080,
+            /// <summary>
+            /// Loads the completion of Physical disk activity. 
+            /// </summary>
+            DiskIO = 0x00000100, // physical disk IO
+            // Part of the 'default set of keywords' (good value in most scenarios).  
+            /// <summary>
+            /// Logs the mapping of file IDs to actual (kernel) file names. 
+            /// </summary>
+            DiskFileIO = 0x00000200,
             /// <summary>
             /// log Disk operations (Vista+ only)
             /// Generally not TOO volumous (typically less than 1K per second) (Stacks associated with this)
@@ -108,6 +108,63 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
             /// Thread Dispatcher (ReadyThread) (Vista+ only) (can be > 10K events per second)
             /// </summary>
             Dispatcher = 0x00000800,
+            /// <summary>
+            /// Logs all page faults (hard or soft)
+            /// Can be pretty volumous (> 1K per second)
+            /// </summary>
+            Memory = 0x00001000,
+            /// <summary>
+            /// Logs all page faults that must fetch the data from the disk (hard faults)
+            /// </summary>
+            MemoryHardFaults = 0x00002000,
+            /// <summary>
+            /// Log Virtual Alloc calls and VirtualFree.   (Vista+ Only)
+            /// Generally not TOO volumous (typically less than 1K per second)
+            /// </summary> 
+            VirtualAlloc = 0x00004000,
+            /// <summary>
+            /// Log mapping of files into memory (Win8+ Only)
+            /// Generally low volume.  
+            /// </summary>
+            VAMap = 0x00008000,
+            /// <summary>
+            /// Logs TCP/IP network send and receive events. 
+            /// </summary>
+            NetworkTCPIP = 0x00010000,
+            /// <summary>
+            /// Logs activity to the windows registry. 
+            /// Can be pretty volumous (> 1K per second)
+            /// </summary>
+            Registry = 0x00020000, // registry calls
+            /// <summary>
+            /// log DbgPrint and DbgPrintEx calls to be converted to ETW events
+            /// </summary>
+            DebugPrint = 0x00040000,
+            /// <summary>
+            /// Job events (Win10+)
+            /// </summary>
+            Job = 0x00080000,
+            // advanced logging (when you care about the internals of the OS)
+            /// <summary>
+            /// Logs Advanced Local Procedure call events (ALPC)
+            /// </summary>
+            AdvancedLocalProcedureCalls = 0x00100000,
+            /// <summary>
+            /// Disk I/O that was split (eg because of mirroring requirements) (Vista+ only)
+            /// </summary> 
+            SplitIO = 0x00200000,
+            /// <summary>
+            /// Debugger events (break/continue/...) (Win10+)
+            /// </summary>
+            Debugger = 0x00400000,
+            /// <summary>
+            /// Device Driver logging (Vista+ only)
+            /// </summary>
+            Driver = 0x00800000,
+            /// <summary>
+            /// Sampled based profiling (every profile interval) (Vista+ only) (expect 1K events per proc per second)
+            /// </summary>
+            Profile = 0x01000000,
             /// <summary>
             /// log file FileOperationEnd (has status code) when they complete (even ones that do not actually
             /// cause Disk I/O).  (Vista+ only)
@@ -120,52 +177,9 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
             /// </summary>
             FileIOInit = 0x04000000,
             /// <summary>
-            /// Logs all page faults (hard or soft)
-            /// Can be pretty volumous (> 1K per second)
+            /// Do not do a system configuration rundown (Win8+)
             /// </summary>
-            Memory = 0x00001000,
-            /// <summary>
-            /// Logs activity to the windows registry. 
-            /// Can be pretty volumous (> 1K per second)
-            /// </summary>
-            Registry = 0x00020000, // registry calls
-            /// <summary>
-            /// log calls to the OS (Vista+ only)
-            /// This is VERY volumous (can be > 100K events per second)
-            /// </summary>
-            SystemCall = 0x00000080,
-            /// <summary>
-            /// Log Virtual Alloc calls and VirtualFree.   (Vista+ Only)
-            /// Generally not TOO volumous (typically less than 1K per second)
-            /// </summary> 
-            VirtualAlloc = 0x004000,
-            /// <summary>
-            /// Log mapping of files into memory (Win8 and above Only)
-            /// Generally low volume.  
-            /// </summary>
-            VAMap = 0x8000,
-
-            // advanced logging (when you care about the internals of the OS)
-            /// <summary>
-            /// Logs Advanced Local Procedure call events. 
-            /// </summary>
-            AdvancedLocalProcedureCalls = 0x00100000,
-            /// <summary>
-            /// log defered procedure calls (an Kernel mechanism for having work done asynchronously) (Vista+ only)
-            /// </summary> 
-            DeferedProcedureCalls = 0x00000020,
-            /// <summary>
-            /// Device Driver logging (Vista+ only)
-            /// </summary>
-            Driver = 0x00800000,
-            /// <summary>
-            /// log hardware interrupts. (Vista+ only)
-            /// </summary>
-            Interrupt = 0x00000040,
-            /// <summary>
-            /// Disk I/O that was split (eg because of mirroring requirements) (Vista+ only)
-            /// </summary> 
-            SplitIO = 0x00200000,
+            NoSysConfig = 0x10000000,
             /// <summary>
             /// Good default kernel flags.  (TODO more detail)
             /// </summary>  
@@ -195,29 +209,119 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
             /// </summary>
             NonContainer = ~(Process | Thread | ImageLoad | Profile | ContextSwitch | ProcessCounters),
 
-            // These are ones that I have made up  
-            // All = 0x07B3FFFF, so 4'0000, 8'0000, 40'0000, and F000'00000 are free.  
-            /// <summary>
-            /// Turn on PMC (Precise Machine Counter) events.   Only Win 8
-            /// </summary>
-            PMCProfile = unchecked((int)0x80000000),
+            /// Non OSKeywords that don't belong anywhere else. Use in NonOSKeywords()
             /// <summary>
             /// Kernel reference set events (like XPERF ReferenceSet).   Fully works only on Win 8.  
             /// </summary>
             ReferenceSet = 0x40000000,
+        };
+
+        #region Kernel Group Masks (Extended Keywords)
+        public class ExtendedGroupKeywordsContainer
+        {
+            public KeywordsGroup1 Group1 { get; set; }
+            public KeywordsGroup2 Group2 { get; set; }
+            public KeywordsGroup3 Group3 { get; set; }
+            public KeywordsGroup4 Group4 { get; set; }
+            public KeywordsGroup5 Group5 { get; set; }
+            public KeywordsGroup6 Group6 { get; set; }
+        }
+
+        /// <summary>
+        /// Global Mask Group 1 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup1
+        {
+            None = 0x0,
+            /// <summary>
+            /// High level WS manager activities, PFN changes
+            /// </summary>
+            Memory =         0x20000001,
+            /// <summary>
+            /// Flush WS on every mark_with_flush
+            /// </summary>
+            FootPrint =      0x20000008,
+            /// <summary>
+            /// PERF_FOOTPRINT + log AutoMark on trace start/stop.
+            /// </summary>
+            ReferenceSet =   0x20000020,
+            /// <summary>
+            /// Pool
+            /// </summary>
+            Pool =           0x20000040,
+            /// <summary>
+            /// Turn on PMC (Precise Machine Counter) events.   Only Win8+
+            /// </summary>
+            PMCProfile =     0x20000400,
             /// <summary>
             /// Events when thread priorities change.  
             /// </summary>
-            ThreadPriority = 0x20000000,
+            ThreadPriority = 0x20002000,
+            /// <summary>
+            /// MemInfo
+            /// </summary>
+            MemoryInfo =     0x20080000,
+            /// <summary>
+            /// Logs Workingset/Commit information on MemInfo DPC
+            /// </summary>
+            MemoryInfoWorkingSet = 0x20800000,
+            Session = 0x20400000,
             /// <summary>
             /// Events when queuing and dequeuing from the I/O completion ports.    
             /// </summary>
-            IOQueue = 0x10000000,
+            IOQueue =        0x21000000,
+        };
+
+        /// <summary>
+        /// Global Mask Group 2 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup2
+        {
+            None = 0x0,
+        };
+
+        /// <summary>
+        /// Global Mask Group 3 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup3
+        {
+            None = 0x0,
+        };
+
+        /// <summary>
+        /// Global Mask Group 4 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup4 : uint
+        {
+            None = 0x0,
             /// <summary>
             /// Handle creation and closing (for handle leaks) 
             /// </summary>
-            Handle = 0x400000,
+            Handle = 0x80000040,
         };
+
+        /// <summary>
+        /// Global Mask Group 5 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup5 : uint
+        {
+            None = 0x0,
+        };
+
+        /// <summary>
+        /// Global Mask Group 6 (for extended ETW Kernel Flags)
+        /// </summary>
+        [Flags]
+        public enum KeywordsGroup6 : ulong
+        {
+            None = 0x0,
+        };
+#endregion
 
         /// <summary>
         /// These keywords can't be passed to the OS, they are defined by KernelTraceEventParser
@@ -226,7 +330,7 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
         {
             get
             {
-                var ret = (Keywords)unchecked((int)0xf84c8000); // PMCProfile ReferenceSet ThreadPriority IOQueue Handle VAMap 
+                var ret = Keywords.ReferenceSet;
                 if (OperatingSystemVersion.AtLeast(OperatingSystemVersion.Win8))
                     ret &= ~Keywords.VAMap;
                 return ret;

@@ -9,6 +9,7 @@ using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Win32;
 
 using KernelKeywords = Microsoft.Diagnostics.Tracing.Parsers.KernelTraceEventParser.Keywords;
+using static Microsoft.Diagnostics.Tracing.Parsers.KernelTraceEventParser;
 
 namespace Microsoft.Diagnostics.Tracing
 {
@@ -22,19 +23,20 @@ namespace Microsoft.Diagnostics.Tracing
             void* propertyBuff, 
             int propertyBuffLength,
             STACK_TRACING_EVENT_ID* stackTracingEventIds,
-            int cStackTracingEventIds)
+            int cStackTracingEventIds,
+            ExtendedGroupKeywordsContainer extendedGroupKeywordsContainer = null)
         {
             var properties = (EVENT_TRACE_PROPERTIES*)propertyBuff;
             bool needExtensions = false;
-            if ((((KernelKeywords)properties->EnableFlags) &
-                (KernelKeywords.PMCProfile | KernelKeywords.ReferenceSet
-                | KernelKeywords.ThreadPriority | KernelKeywords.IOQueue | KernelKeywords.Handle)) != 0)
+            if (extendedGroupKeywordsContainer != null)
+            {
                 needExtensions = true;
+            }
 
             if (needExtensions)
             {
                 List<ExtensionItem> extensions = new List<ExtensionItem>();
-                PutEnableFlagsIntoExtensions(extensions, (KernelKeywords)properties->EnableFlags);
+                PutEnableFlagsIntoExtensions(extensions, (KernelKeywords)properties->EnableFlags, extendedGroupKeywordsContainer);
                 PutStacksIntoExtensions(extensions, stackTracingEventIds, cStackTracingEventIds);
                 int len = SaveExtensions(extensions, null, 0);
                 int extensionsOffset = ExtensionsOffset(properties, propertyBuffLength);
@@ -422,58 +424,49 @@ namespace Microsoft.Diagnostics.Tracing
         private static Guid VirtualAllocTaskGuid = new Guid(unchecked((int)0x3d6fa8d3), unchecked((short)0xfe05), unchecked((short)0x11d0), 0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c);
         private static Guid ObjectTaskGuid = new Guid(unchecked((int)0x89497f50), unchecked((short)0xeffe), 0x4440, 0x8c, 0xf2, 0xce, 0x6b, 0x1c, 0xdc, 0xac, 0xa7);
 
-        private static void PutEnableFlagsIntoExtensions(List<ExtensionItem> extensions, KernelKeywords keywords)
+        private static void PutEnableFlagsIntoExtensions(List<ExtensionItem> extensions, KernelKeywords keywords, ExtendedGroupKeywordsContainer extendedGroupKeywordsContainer)
         {
+            int[] groups = new int[6];
             var extendedEnableFlags = new ExtensionItem(ExtensionItemTypes.ETW_EXT_ENABLE_FLAGS);
 
             if ((keywords & KernelKeywords.ReferenceSet) != 0)     // If ReferenceSet specified, include VAMap and VirtualAlloc.
                 keywords |= KernelKeywords.VAMap | KernelKeywords.VirtualAlloc;
-            int group0 = ((int)keywords & (int)~KernelTraceEventParser.NonOSKeywords);
-            extendedEnableFlags.Data.Add(group0);
 
-            int group1 = 0;
-            if ((keywords & KernelKeywords.PMCProfile) != 0)
-                group1 |= 0x400;
-            if ((keywords & KernelKeywords.Profile) != 0)
-                group1 |= 0x002;
-            if ((keywords & KernelKeywords.ReferenceSet) != 0)
+            groups[0] = ((int)keywords & (int)~KernelTraceEventParser.NonOSKeywords);
+
+            const int lowerBitsGroupMask = 0x0FFFFFFF;
+            if (extendedGroupKeywordsContainer.Group1 != KeywordsGroup1.None)
             {
-                //#define PERF_MEMORY          0x20000001   // High level WS manager activities, PFN changes.
-                //#define PERF_FOOTPRINT       0x20000008   // Flush WS on every mark_with_flush.
-                //#define PERF_MEMINFO         0x20080000
-                //#define PERF_MEMINFO_WS      0x20800000   // Logs WorkingSet/Commit information on MemInfo DPC.
-                //#define PERF_SESSION         0x20400000
-                //#define PERF_REFSET          0x20000020   // PERF_FOOTPRINT + log AutoMark on trace start/stop.
-
-                group1 |= 0xC80029;
+                groups[1] = (int) extendedGroupKeywordsContainer.Group1 & lowerBitsGroupMask;
+                if ((keywords & KernelKeywords.Profile) != 0)
+                    groups[1] |= 0x002;
+                if ((keywords & KernelKeywords.ReferenceSet) != 0)
+                {
+                    groups[1] |= (int) (KeywordsGroup1.Memory | KeywordsGroup1.FootPrint | KeywordsGroup1.MemoryInfo | KeywordsGroup1.MemoryInfoWorkingSet | KeywordsGroup1.Session | KeywordsGroup1.ReferenceSet) & lowerBitsGroupMask;
+                }
             }
-            if ((keywords & KernelKeywords.IOQueue) != 0)
+            if (extendedGroupKeywordsContainer.Group2 != KeywordsGroup2.None)
             {
-                // #define PERF_KERNEL_QUEUE    0x21000000
-                group1 |= 0x1000000;
+                groups[2] = (int)extendedGroupKeywordsContainer.Group2 & lowerBitsGroupMask;
             }
-
-            if ((keywords & KernelKeywords.ThreadPriority) != 0)
+            if (extendedGroupKeywordsContainer.Group3 != KeywordsGroup3.None)
             {
-                // #define PERF_PRIORITY        0x20002000   // Logs changing of thread priority.
-                group1 |= 0x2000;
+                groups[3] = (int)extendedGroupKeywordsContainer.Group3 & lowerBitsGroupMask;
             }
-
-            extendedEnableFlags.Data.Add(group1);
-
-            int group4 = 0;
-            if ((keywords & KernelKeywords.Handle) != 0)
+            if (extendedGroupKeywordsContainer.Group4 != KeywordsGroup4.None)
             {
-                // #define PERF_OB_HANDLE       0x80000040
-                group4 |= 0x40;
+                groups[4] = (int)extendedGroupKeywordsContainer.Group4 & lowerBitsGroupMask;
+            }
+            if (extendedGroupKeywordsContainer.Group5 != KeywordsGroup5.None)
+            {
+                groups[5] = (int)extendedGroupKeywordsContainer.Group5 & lowerBitsGroupMask;
+            }
+            if (extendedGroupKeywordsContainer.Group6 != KeywordsGroup6.None)
+            {
+                groups[6] = (int)extendedGroupKeywordsContainer.Group6 & lowerBitsGroupMask;
             }
 
-            extendedEnableFlags.Data.Add(0); // group 2
-            extendedEnableFlags.Data.Add(0);
-            extendedEnableFlags.Data.Add(group4); // group 4
-            extendedEnableFlags.Data.Add(0);
-            extendedEnableFlags.Data.Add(0); // group 6
-            extendedEnableFlags.Data.Add(0);
+            extendedEnableFlags.Data.AddRange(groups);
             extensions.Add(extendedEnableFlags);
         }
 
