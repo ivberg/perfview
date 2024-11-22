@@ -115,8 +115,7 @@ namespace PerfView
         public int BufferSizeMB = 256;
         public int CircularMB;
         public bool InMemoryCircularBuffer;         // Uses EVENT_TRACE_BUFFERING_MODE for an in-memory circular buffer
-        public KernelTraceEventParser.Keywords KernelEvents = KernelTraceEventParser.Keywords.Default;
-        public KernelTraceEventParser.KeywordsGroup1 KernelEventsGroup1 = KernelTraceEventParser.KeywordsGroup1.None;
+        public KernelTraceEventParser.CombinedKernelKeywords KernelEvents = KernelTraceEventParser.CombinedKernelKeywords.Default;
         public string[] CpuCounters;        // Specifies any profile sources (CPU counters) to turn on (Win 8 only)
         public ClrTraceEventParser.Keywords ClrEvents = ClrTraceEventParser.Keywords.Default;
         public TraceEventLevel ClrEventLevel = Microsoft.Diagnostics.Tracing.TraceEventLevel.Verbose;    // The verbosity of CLR events
@@ -250,12 +249,12 @@ namespace PerfView
         internal static void ConfigureForGCCollectOnly(CommandLineArgs commandLineArgs)
         {
             // The process events are so we get process names.
-            commandLineArgs.KernelEvents = KernelTraceEventParser.Keywords.Process;
+            commandLineArgs.KernelEvents.Keywords = KernelTraceEventParser.Keywords.Process;
 
             // ImageLoad events are required if we want to capture trigger stacks.
             if (commandLineArgs.GCTriggeredStacks)
             {
-                commandLineArgs.KernelEvents |= KernelTraceEventParser.Keywords.ImageLoad;
+                commandLineArgs.KernelEvents.Keywords |= KernelTraceEventParser.Keywords.ImageLoad;
             }
             commandLineArgs.ClrEvents = ClrTraceEventParser.Keywords.GC;
             commandLineArgs.ClrEventLevel = TraceEventLevel.Informational;
@@ -464,12 +463,12 @@ namespace PerfView
 
                 if (hasStacks)
                 {
-                    KernelEvents = KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.Thread | KernelTraceEventParser.Keywords.ImageLoad;
+                    KernelEvents.Keywords = KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.Thread | KernelTraceEventParser.Keywords.ImageLoad;
                     ClrEvents = ClrTraceEventParser.Keywords.Jit | ClrTraceEventParser.Keywords.Loader;
                 }
                 else
                 {
-                    KernelEvents = KernelTraceEventParser.Keywords.None;
+                    KernelEvents.Keywords = KernelTraceEventParser.Keywords.None;
                     ClrEvents = ClrTraceEventParser.Keywords.None;
                     NoNGenRundown = true;   // We still do normal rundown because EventSource rundown is done there.   
                     NoClrRundown = true;
@@ -486,7 +485,7 @@ namespace PerfView
             parser.DefineOptionalQualifier("ThreadTime", ref ThreadTime, "Shortcut for turning on context switch and readyThread events");
             if (ThreadTime)
             {
-                KernelEvents = KernelTraceEventParser.Keywords.ThreadTime;
+                KernelEvents.Keywords = KernelTraceEventParser.Keywords.ThreadTime;
             }
 
             parser.DefineOptionalQualifier("GCOnly", ref GCOnly, "Turns on JUST GC collections an allocation sampling.");
@@ -494,7 +493,7 @@ namespace PerfView
             {
                 // TODO this logic is cloned.  We need it in only one place.  If you update it do the other location as well
                 // For stack parsing.  
-                KernelEvents = KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.Thread | KernelTraceEventParser.Keywords.ImageLoad | KernelTraceEventParser.Keywords.VirtualAlloc;
+                KernelEvents.Keywords = KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.Thread | KernelTraceEventParser.Keywords.ImageLoad | KernelTraceEventParser.Keywords.VirtualAlloc;
                 ClrEvents = ClrTraceEventParser.Keywords.GC | ClrTraceEventParser.Keywords.GCHeapSurvivalAndMovement | ClrTraceEventParser.Keywords.Stack |
                             ClrTraceEventParser.Keywords.Jit | ClrTraceEventParser.Keywords.StopEnumeration | ClrTraceEventParser.Keywords.SupressNGen |
                             ClrTraceEventParser.Keywords.Loader | ClrTraceEventParser.Keywords.Exception | ClrTraceEventParser.Keywords.Type | ClrTraceEventParser.Keywords.GCHeapAndTypeNames;
@@ -521,7 +520,7 @@ namespace PerfView
             // WPR option implies a bunch of kernel events.  
             if (Wpr)
             {
-                KernelEvents = KernelTraceEventParser.Keywords.ThreadTime |
+                KernelEvents.Keywords = KernelTraceEventParser.Keywords.ThreadTime |
                     KernelTraceEventParser.Keywords.DeferedProcedureCalls |
                     KernelTraceEventParser.Keywords.Driver |
                     KernelTraceEventParser.Keywords.Interrupt;
@@ -531,8 +530,8 @@ namespace PerfView
             parser.DefineOptionalQualifier("ClrEventLevel", ref ClrEventLevel, "The verbosity for CLR events");
             parser.DefineOptionalQualifier("ClrEvents", ref ClrEvents,
                 "A comma separated list of .NET CLR events to turn on.  See Users guide for details.");
-            parser.DefineOptionalQualifier("KernelEvents", ref KernelEvents,
-                "A comma separated list of windows OS kernel events to turn on.  See Users guide for details.");
+
+            parser.DefineOptionalQualifier("KernelEvents", ref KernelEvents, KernelTraceEventParser.CombinedKernelKeywords.GetHelpText());
             parser.DefineOptionalQualifier("TplEvents", ref TplEvents,
                 "A comma separated list of Task Parallel Library (TPL) events to turn on.  See Users guide for details.");
 

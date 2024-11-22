@@ -454,24 +454,24 @@ namespace PerfView
                 if (parsedArgs.CpuCounters != null)
                 {
                     SetCpuCounters(parsedArgs.CpuCounters);
-                    parsedArgs.KernelEventsGroup1 |= KernelTraceEventParser.KeywordsGroup1.PMCProfile;
+                    parsedArgs.KernelEvents.KeywordsGroup1 |= KernelTraceEventParser.KeywordsGroup1.PMCProfile;
                 }
                 else
                 {
-                    if ((parsedArgs.KernelEventsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
+                    if ((parsedArgs.KernelEvents.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
                     {
                         throw new ApplicationException("The PMCProfile should not be set explicitly.  Simply set the CpuCounters.");
                     }
                 }
 
                 LogFile.WriteLine("Kernel keywords enabled: {0}", parsedArgs.KernelEvents);
-                if (parsedArgs.KernelEvents != KernelTraceEventParser.Keywords.None)
+                if (parsedArgs.KernelEvents.Keywords != KernelTraceEventParser.Keywords.None)
                 {
-                    if ((parsedArgs.KernelEvents & (KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.ImageLoad)) == 0 &&
-                        (parsedArgs.KernelEvents & (KernelTraceEventParser.Keywords.Profile | KernelTraceEventParser.Keywords.ContextSwitch)) != 0)
+                    if ((parsedArgs.KernelEvents.Keywords & (KernelTraceEventParser.Keywords.Process | KernelTraceEventParser.Keywords.ImageLoad)) == 0 &&
+                        (parsedArgs.KernelEvents.Keywords & (KernelTraceEventParser.Keywords.Profile | KernelTraceEventParser.Keywords.ContextSwitch)) != 0)
                     {
                         LogFile.WriteLine("Kernel process and image thread events not present, adding them");
-                        parsedArgs.KernelEvents |= (
+                        parsedArgs.KernelEvents.Keywords |= (
                             KernelTraceEventParser.Keywords.Process |
                             KernelTraceEventParser.Keywords.ImageLoad |
                             KernelTraceEventParser.Keywords.Thread);
@@ -480,7 +480,7 @@ namespace PerfView
                     // If these are on, turn on Virtual Allocs as well.  
                     if (parsedArgs.OSHeapProcess != 0 || parsedArgs.OSHeapExe != null || parsedArgs.DotNetAlloc || parsedArgs.DotNetAllocSampled)
                     {
-                        parsedArgs.KernelEvents |= KernelTraceEventParser.Keywords.VirtualAlloc;
+                        parsedArgs.KernelEvents.Keywords |= KernelTraceEventParser.Keywords.VirtualAlloc;
                     }
 
                     kernelModeSession.BufferSizeMB = parsedArgs.BufferSizeMB;
@@ -494,13 +494,13 @@ namespace PerfView
                     }
 
                     // Don't capture any kernel stacks for /GCCollectOnly.
-                    KernelTraceEventParser.Keywords stackKeywords = parsedArgs.KernelEvents;
+                    KernelTraceEventParser.Keywords stackKeywords = parsedArgs.KernelEvents.Keywords;
                     if (parsedArgs.GCCollectOnly)
                     {
                         stackKeywords = KernelTraceEventParser.Keywords.None;
                     }
 
-                    kernelModeSession.EnableKernelProvider(parsedArgs.KernelEvents, stackKeywords);
+                    kernelModeSession.EnableKernelProvider(parsedArgs.KernelEvents.Keywords, stackKeywords);
                 }
 
                 // Turn on the OS Heap stuff if anyone asked for it.  
@@ -602,7 +602,7 @@ namespace PerfView
 
                     PerfViewLogger.Log.SessionParameters(s_KernelessionName, kernelFileName ?? "",
                         kernelModeSession.BufferSizeMB, kernelModeSession.CircularBufferMB);
-                    PerfViewLogger.Log.KernelEnableParameters(parsedArgs.KernelEvents, parsedArgs.KernelEvents);
+                    PerfViewLogger.Log.KernelEnableParameters(parsedArgs.KernelEvents.Keywords, parsedArgs.KernelEvents.Keywords);
                     PerfViewLogger.Log.SessionParameters(s_UserModeSessionName, userFileName ?? "",
                         userModeSession.BufferSizeMB, userModeSession.CircularBufferMB);
 
@@ -638,7 +638,7 @@ namespace PerfView
                             // Turn on File Create (open) logging as it is useful for investigations and lightweight. 
                             // Don't bother if the Kernel FileIOInit events are on because they are strictly better
                             // and you end up with annoying redundancy.  
-                            if ((parsedArgs.KernelEvents & KernelTraceEventParser.Keywords.FileIOInit) == 0)
+                            if ((parsedArgs.KernelEvents.Keywords & KernelTraceEventParser.Keywords.FileIOInit) == 0)
                             {
                                 // 0x80 = CREATE_FILE (which is any open, including GetFileAttributes etc.   
                                 EnableUserProvider(userModeSession, "Microsoft-Windows-Kernel-File",
@@ -785,7 +785,7 @@ namespace PerfView
 
                             // If we have turned on CSwitch and ReadyThread events, go ahead and turn on networking stuff and antimalware too.
                             // It does not increase the volume in a significant way and they can be pretty useful.
-                            if ((parsedArgs.KernelEvents & (KernelTraceEventParser.Keywords.Dispatcher | KernelTraceEventParser.Keywords.ContextSwitch))
+                            if ((parsedArgs.KernelEvents.Keywords & (KernelTraceEventParser.Keywords.Dispatcher | KernelTraceEventParser.Keywords.ContextSwitch))
                                 == (KernelTraceEventParser.Keywords.Dispatcher | KernelTraceEventParser.Keywords.ContextSwitch))
                             {
                                 EnableUserProvider(userModeSession, MicrosoftAntimalwareEngineTraceEventParser.ProviderName,
@@ -845,7 +845,7 @@ namespace PerfView
                                 TraceEventLevel.Informational, (ulong)ClrPrivateTraceEventParser.Keywords.GC, options);
                         }
 
-                        if ((parsedArgs.KernelEvents & KernelTraceEventParser.Keywords.ReferenceSet) != 0)
+                        if ((parsedArgs.KernelEvents.Keywords & KernelTraceEventParser.Keywords.ReferenceSet) != 0)
                         {
                             // ALso get heap ranges if ReferenceSet is on.  
                             EnableUserProvider(userModeSession, "Win32HeapRanges", HeapTraceProviderTraceEventParser.HeapRangeProviderGuid,
@@ -1185,7 +1185,7 @@ namespace PerfView
                 {
                     try
                     {
-                        if (parsedArgs.KernelEvents != KernelTraceEventParser.Keywords.None)
+                        if (parsedArgs.KernelEvents.Keywords != KernelTraceEventParser.Keywords.None)
                         {
                             using (var kernelSession = new TraceEventSession(s_KernelessionName, TraceEventSessionOptions.Attach))
                             {
@@ -2885,7 +2885,7 @@ namespace PerfView
                 cmdLineArgs += " /DelayAfterTriggerSec:" + parsedArgs.DelayAfterTriggerSec;
             }
 
-            if (parsedArgs.KernelEvents != KernelTraceEventParser.Keywords.Default)
+            if (parsedArgs.KernelEvents.Keywords != KernelTraceEventParser.Keywords.Default)
             {
                 cmdLineArgs += " /KernelEvents:" + parsedArgs.KernelEvents.ToString().Replace(" ", "");
             }

@@ -601,8 +601,8 @@ namespace Microsoft.Diagnostics.Tracing.Session
         /// Specifies which events should have their stack traces captured when an event is logged</param>
         /// <returns>Returns true if the session existed before and was restarted (see TraceEventSession)</returns>
         public unsafe bool EnableKernelProvider(KernelTraceEventParser.Keywords flags, KernelTraceEventParser.Keywords stackCapture = KernelTraceEventParser.Keywords.None, 
-                                                KernelTraceEventParser.ExtendedGroupKeywordsContainer extendedGroupKeywordsContainer = null,
-                                                KernelTraceEventParser.ExtendedGroupKeywordsContainer extendedGroupStackCaptureContainer = null)
+                                                KernelTraceEventParser.CombinedKernelKeywords combinedKernelKeywords = null,
+                                                KernelTraceEventParser.CombinedKernelKeywords extendedGroupStackCaptureContainer = null)
         {
             // Setting stack capture implies that it is on.
             flags |= stackCapture;
@@ -666,7 +666,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
 
                 // The Profile event requires the SeSystemProfilePrivilege to succeed, so set it.
                 if ((flags & KernelTraceEventParser.Keywords.Profile) != 0 ||
-                     (extendedGroupKeywordsContainer.Group1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
+                     (combinedKernelKeywords.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
                 {
                     TraceEventNativeMethods.SetPrivilege(TraceEventNativeMethods.SE_SYSTEM_PROFILE_PRIVILEGE);
                     double cpu100ns = (CpuSampleIntervalMSec * 10000.0 + .5);
@@ -735,14 +735,14 @@ namespace Microsoft.Diagnostics.Tracing.Session
                     properties->Wnode.Guid = KernelTraceEventParser.ProviderGuid;
                     properties->EnableFlags = (uint)flags;
 
-                    dwErr = ETWKernelControl.StartKernelSession(out ulong kernelSessionHandle, properties, PropertiesSize, stackTracingIds, numIDs, extendedGroupKeywordsContainer);
+                    dwErr = ETWKernelControl.StartKernelSession(out ulong kernelSessionHandle, properties, PropertiesSize, stackTracingIds, numIDs, combinedKernelKeywords);
                     if (dwErr == 0xB7) // STIERR_HANDLEEXISTS
                     {
                         ret = true;
                         Stop();
                         m_Stopped = false;
                         Thread.Sleep(100);  // Give it some time to stop.
-                        dwErr = ETWKernelControl.StartKernelSession(out kernelSessionHandle, properties, PropertiesSize, stackTracingIds, numIDs, extendedGroupKeywordsContainer);
+                        dwErr = ETWKernelControl.StartKernelSession(out kernelSessionHandle, properties, PropertiesSize, stackTracingIds, numIDs, combinedKernelKeywords);
                     }
 
                     m_SessionHandle = new TraceEventNativeMethods.SafeTraceHandle(kernelSessionHandle);
@@ -1952,7 +1952,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
         /// Given a mask of kernel flags, set the array stackTracingIds of size stackTracingIdsMax to match.
         /// It returns the number of entries in stackTracingIds that were filled in.
         /// </summary>
-        private static unsafe int SetStackTraceIds(KernelTraceEventParser.Keywords stackCapture, STACK_TRACING_EVENT_ID* stackTracingIds, int stackTracingIdsMax, KernelTraceEventParser.ExtendedGroupKeywordsContainer extendedGroupStackCaptureContainer)
+        private static unsafe int SetStackTraceIds(KernelTraceEventParser.Keywords stackCapture, STACK_TRACING_EVENT_ID* stackTracingIds, int stackTracingIdsMax, KernelTraceEventParser.CombinedKernelKeywords extendedGroupStackCaptureContainer)
         {
             int curID = 0;
 
@@ -1965,7 +1965,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
             }
 
             // PCM sample profiling
-            if ((extendedGroupStackCaptureContainer.Group1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
+            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.PerfInfoTaskGuid;
                 stackTracingIds[curID].Type = 0x2f;     // PMC Sample Profile
@@ -1994,7 +1994,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 curID++;
             }
 
-            if ((extendedGroupStackCaptureContainer.Group1 & KernelTraceEventParser.KeywordsGroup1.ThreadPriority) != 0)
+            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.ThreadPriority) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
                 stackTracingIds[curID].Type = 0x30;     // Set Priority
@@ -2012,7 +2012,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 curID++;
             }
 
-            if ((extendedGroupStackCaptureContainer.Group1 & KernelTraceEventParser.KeywordsGroup1.IOQueue) != 0)
+            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.IOQueue) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
                 stackTracingIds[curID].Type = 0x3e;     // #define PERFINFO_LOG_TYPE_KQUEUE_ENQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3E)
@@ -2021,7 +2021,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 stackTracingIds[curID].Type = 0x3f;     // #define PERFINFO_LOG_TYPE_KQUEUE_DEQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3F)
                 curID++;
             }
-            if ((extendedGroupStackCaptureContainer.Group4 & KernelTraceEventParser.KeywordsGroup4.Handle) != 0)
+            if ((extendedGroupStackCaptureContainer.KeywordsGroup4 & KernelTraceEventParser.KeywordsGroup4.Handle) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
                 stackTracingIds[curID].Type = 0x20;     // PERFINFO_LOG_TYPE_CREATE_HANDLE                (EVENT_TRACE_GROUP_OBJECT | 0x20)

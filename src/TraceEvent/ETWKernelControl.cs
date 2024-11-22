@@ -24,11 +24,11 @@ namespace Microsoft.Diagnostics.Tracing
             int propertyBuffLength,
             STACK_TRACING_EVENT_ID* stackTracingEventIds,
             int cStackTracingEventIds,
-            ExtendedGroupKeywordsContainer extendedGroupKeywordsContainer = null)
+            CombinedKernelKeywords combinedKernelKeywords = null)
         {
             var properties = (EVENT_TRACE_PROPERTIES*)propertyBuff;
             bool needExtensions = false;
-            if (extendedGroupKeywordsContainer != null)
+            if (combinedKernelKeywords != null)
             {
                 needExtensions = true;
             }
@@ -36,7 +36,7 @@ namespace Microsoft.Diagnostics.Tracing
             if (needExtensions)
             {
                 List<ExtensionItem> extensions = new List<ExtensionItem>();
-                PutEnableFlagsIntoExtensions(extensions, (KernelKeywords)properties->EnableFlags, extendedGroupKeywordsContainer);
+                PutEnableFlagsIntoExtensions(extensions, (KernelKeywords)properties->EnableFlags, combinedKernelKeywords);
                 PutStacksIntoExtensions(extensions, stackTracingEventIds, cStackTracingEventIds);
                 int len = SaveExtensions(extensions, null, 0);
                 int extensionsOffset = ExtensionsOffset(properties, propertyBuffLength);
@@ -424,7 +424,7 @@ namespace Microsoft.Diagnostics.Tracing
         private static Guid VirtualAllocTaskGuid = new Guid(unchecked((int)0x3d6fa8d3), unchecked((short)0xfe05), unchecked((short)0x11d0), 0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c);
         private static Guid ObjectTaskGuid = new Guid(unchecked((int)0x89497f50), unchecked((short)0xeffe), 0x4440, 0x8c, 0xf2, 0xce, 0x6b, 0x1c, 0xdc, 0xac, 0xa7);
 
-        private static void PutEnableFlagsIntoExtensions(List<ExtensionItem> extensions, KernelKeywords keywords, ExtendedGroupKeywordsContainer extendedGroupKeywordsContainer)
+        private static void PutEnableFlagsIntoExtensions(List<ExtensionItem> extensions, KernelKeywords keywords, CombinedKernelKeywords combinedKernelKeywords)
         {
             int[] groups = new int[6];
             var extendedEnableFlags = new ExtensionItem(ExtensionItemTypes.ETW_EXT_ENABLE_FLAGS);
@@ -435,9 +435,9 @@ namespace Microsoft.Diagnostics.Tracing
             groups[0] = ((int)keywords & (int)~KernelTraceEventParser.NonOSKeywords);
 
             const int lowerBitsGroupMask = 0x0FFFFFFF;
-            if (extendedGroupKeywordsContainer.Group1 != KeywordsGroup1.None)
+            if (combinedKernelKeywords.KeywordsGroup1 != KeywordsGroup1.None)
             {
-                groups[1] = (int) extendedGroupKeywordsContainer.Group1 & lowerBitsGroupMask;
+                groups[1] = (int) combinedKernelKeywords.KeywordsGroup1 & lowerBitsGroupMask;
                 if ((keywords & KernelKeywords.Profile) != 0)
                     groups[1] |= 0x002;
                 if ((keywords & KernelKeywords.ReferenceSet) != 0)
@@ -445,25 +445,25 @@ namespace Microsoft.Diagnostics.Tracing
                     groups[1] |= (int) (KeywordsGroup1.Memory | KeywordsGroup1.FootPrint | KeywordsGroup1.MemoryInfo | KeywordsGroup1.MemoryInfoWorkingSet | KeywordsGroup1.Session | KeywordsGroup1.ReferenceSet) & lowerBitsGroupMask;
                 }
             }
-            if (extendedGroupKeywordsContainer.Group2 != KeywordsGroup2.None)
+            if (combinedKernelKeywords.KeywordsGroup2 != KeywordsGroup2.None)
             {
-                groups[2] = (int)extendedGroupKeywordsContainer.Group2 & lowerBitsGroupMask;
+                groups[2] = (int)combinedKernelKeywords.KeywordsGroup2 & lowerBitsGroupMask;
             }
-            if (extendedGroupKeywordsContainer.Group3 != KeywordsGroup3.None)
+            if (combinedKernelKeywords.KeywordsGroup3 != KeywordsGroup3.None)
             {
-                groups[3] = (int)extendedGroupKeywordsContainer.Group3 & lowerBitsGroupMask;
+                groups[3] = (int)combinedKernelKeywords.KeywordsGroup3 & lowerBitsGroupMask;
             }
-            if (extendedGroupKeywordsContainer.Group4 != KeywordsGroup4.None)
+            if (combinedKernelKeywords.KeywordsGroup4 != KeywordsGroup4.None)
             {
-                groups[4] = (int)extendedGroupKeywordsContainer.Group4 & lowerBitsGroupMask;
+                groups[4] = (int)combinedKernelKeywords.KeywordsGroup4 & lowerBitsGroupMask;
             }
-            if (extendedGroupKeywordsContainer.Group5 != KeywordsGroup5.None)
+            if (combinedKernelKeywords.KeywordsGroup5 != KeywordsGroup5.None)
             {
-                groups[5] = (int)extendedGroupKeywordsContainer.Group5 & lowerBitsGroupMask;
+                groups[5] = (int)combinedKernelKeywords.KeywordsGroup5 & lowerBitsGroupMask;
             }
-            if (extendedGroupKeywordsContainer.Group6 != KeywordsGroup6.None)
+            if (combinedKernelKeywords.KeywordsGroup6 != KeywordsGroup6.None)
             {
-                groups[6] = (int)extendedGroupKeywordsContainer.Group6 & lowerBitsGroupMask;
+                groups[6] = (int)combinedKernelKeywords.KeywordsGroup6 & lowerBitsGroupMask;
             }
 
             extendedEnableFlags.Data.AddRange(groups);

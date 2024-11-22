@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Diagnostics.Utilities;
 using Address = System.UInt64;
+using System.Linq;
 
 /* This file was generated with the command */
 // traceParserGen /needsState /merge /renameFile KernelTraceEventParser.renames /mof KernelTraceEventParser.mof KernelTraceEventParser.cs
@@ -217,16 +218,6 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
         };
 
         #region Kernel Group Masks (Extended Keywords)
-        public class ExtendedGroupKeywordsContainer
-        {
-            public KeywordsGroup1 Group1 { get; set; }
-            public KeywordsGroup2 Group2 { get; set; }
-            public KeywordsGroup3 Group3 { get; set; }
-            public KeywordsGroup4 Group4 { get; set; }
-            public KeywordsGroup5 Group5 { get; set; }
-            public KeywordsGroup6 Group6 { get; set; }
-        }
-
         /// <summary>
         /// Global Mask Group 1 (for extended ETW Kernel Flags)
         /// </summary>
@@ -321,7 +312,164 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
         {
             None = 0x0,
         };
-#endregion
+
+        public class CombinedKernelKeywords
+        {
+            public KernelTraceEventParser.Keywords Keywords { get; set; }
+            public KernelTraceEventParser.KeywordsGroup1 KeywordsGroup1 { get; set; }
+            public KernelTraceEventParser.KeywordsGroup2 KeywordsGroup2 { get; set; }
+            public KernelTraceEventParser.KeywordsGroup3 KeywordsGroup3 { get; set; }
+            public KernelTraceEventParser.KeywordsGroup4 KeywordsGroup4 { get; set; }
+            public KernelTraceEventParser.KeywordsGroup5 KeywordsGroup5 { get; set; }
+            public KernelTraceEventParser.KeywordsGroup6 KeywordsGroup6 { get; set; }
+
+            private static readonly Dictionary<string, (Type EnumType, int Group)> KeywordMap;
+            private static readonly string[] ValidKeywords;
+            private static readonly string HelpText;
+
+            public static CombinedKernelKeywords Default => new CombinedKernelKeywords
+            {
+                Keywords = KernelTraceEventParser.Keywords.Default,
+                KeywordsGroup1 = KernelTraceEventParser.KeywordsGroup1.None,
+                KeywordsGroup2 = KernelTraceEventParser.KeywordsGroup2.None,
+                KeywordsGroup3 = KernelTraceEventParser.KeywordsGroup3.None,
+                KeywordsGroup4 = KernelTraceEventParser.KeywordsGroup4.None,
+                KeywordsGroup5 = KernelTraceEventParser.KeywordsGroup5.None,
+                KeywordsGroup6 = KernelTraceEventParser.KeywordsGroup6.None
+            };
+
+            public CombinedKernelKeywords()
+            {
+                Keywords = KernelTraceEventParser.Keywords.None;
+                KeywordsGroup1 = KernelTraceEventParser.KeywordsGroup1.None;
+                KeywordsGroup2 = KernelTraceEventParser.KeywordsGroup2.None;
+                KeywordsGroup3 = KernelTraceEventParser.KeywordsGroup3.None;
+                KeywordsGroup4 = KernelTraceEventParser.KeywordsGroup4.None;
+                KeywordsGroup5 = KernelTraceEventParser.KeywordsGroup5.None;
+                KeywordsGroup6 = KernelTraceEventParser.KeywordsGroup6.None;
+            }
+
+            static CombinedKernelKeywords()
+            {
+                KeywordMap = new Dictionary<string, (Type, int)>(StringComparer.OrdinalIgnoreCase);
+                var allKeywords = new List<string>();
+
+                // Initialize map with all enum values from all groups
+                AddEnumToMap(typeof(KernelTraceEventParser.Keywords), 0, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup1), 1, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup2), 2, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup3), 3, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup4), 4, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup5), 5, allKeywords);
+                AddEnumToMap(typeof(KernelTraceEventParser.KeywordsGroup6), 6, allKeywords);
+
+                ValidKeywords = allKeywords.Where(k => k != "None" && k != "Default" && k != "All").OrderBy(k => k).ToArray();
+
+                // Create the help text dynamically using just the defaults
+                var defaultValues = Default.GetEnabledKeywords().Split(',');
+
+                var helpBuilder = new StringBuilder();
+                helpBuilder.Append("A comma-separated list of kernel events to enable. The default values (");
+                helpBuilder.Append(string.Join(", ", defaultValues));
+                helpBuilder.Append(") are the most commonly used. Other valid keywords include: ");
+                helpBuilder.Append(string.Join(", ", ValidKeywords.Except(defaultValues, StringComparer.OrdinalIgnoreCase)));
+                helpBuilder.Append('.');
+
+                HelpText = helpBuilder.ToString();
+            }
+
+            private static void AddEnumToMap(Type enumType, int group, List<string> allKeywords)
+            {
+                foreach (string name in Enum.GetNames(enumType))
+                {
+                    KeywordMap[name] = (enumType, group);
+                    allKeywords.Add(name);
+                }
+            }
+
+            public static string GetHelpText() => HelpText;
+
+            public static CombinedKernelKeywords Parse(string input)
+            {
+                if (string.IsNullOrWhiteSpace(input))
+                    return Default;
+
+                var result = new CombinedKernelKeywords();
+
+                var keywords = input.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                   .Select(k => k.Trim())
+                                   .Where(k => !string.IsNullOrWhiteSpace(k));
+
+                foreach (var keyword in keywords)
+                {
+                    if (!KeywordMap.TryGetValue(keyword, out var enumInfo))
+                    {
+                        throw new ArgumentException($"Unknown kernel event keyword: {keyword}. Valid keywords are: {string.Join(", ", ValidKeywords)}");
+                    }
+
+                    object parsedValue = Enum.Parse(enumInfo.EnumType, keyword, true);
+
+                    switch (enumInfo.Group)
+                    {
+                        case 0:
+                            result.Keywords |= (KernelTraceEventParser.Keywords)parsedValue;
+                            break;
+                        case 1:
+                            result.KeywordsGroup1 |= (KernelTraceEventParser.KeywordsGroup1)parsedValue;
+                            break;
+                        case 2:
+                            result.KeywordsGroup2 |= (KernelTraceEventParser.KeywordsGroup2)parsedValue;
+                            break;
+                        case 3:
+                            result.KeywordsGroup3 |= (KernelTraceEventParser.KeywordsGroup3)parsedValue;
+                            break;
+                        case 4:
+                            result.KeywordsGroup4 |= (KernelTraceEventParser.KeywordsGroup4)parsedValue;
+                            break;
+                        case 5:
+                            result.KeywordsGroup5 |= (KernelTraceEventParser.KeywordsGroup5)parsedValue;
+                            break;
+                        case 6:
+                            result.KeywordsGroup6 |= (KernelTraceEventParser.KeywordsGroup6)parsedValue;
+                            break;
+                    }
+                }
+
+                return result;
+            }
+
+            public override string ToString()
+            {
+                return "KeywordList";
+            }
+
+            public string GetEnabledKeywords()
+            {
+                var enabledKeywords = new List<string>();
+
+                AddEnabledKeywords(Keywords, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup1, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup2, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup3, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup4, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup5, enabledKeywords);
+                AddEnabledKeywords(KeywordsGroup6, enabledKeywords);
+
+                return string.Join(",", enabledKeywords);
+            }
+
+            private void AddEnabledKeywords<T>(T flags, List<string> enabledKeywords) where T : Enum
+            {
+                foreach (T value in Enum.GetValues(typeof(T)))
+                {
+                    if (flags.HasFlag(value) && !value.ToString().Equals("None"))
+                    {
+                        enabledKeywords.Add(value.ToString());
+                    }
+                }
+            }
+        }
+        #endregion
 
         /// <summary>
         /// These keywords can't be passed to the OS, they are defined by KernelTraceEventParser
