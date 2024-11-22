@@ -27,13 +27,8 @@ namespace Microsoft.Diagnostics.Tracing
             CombinedKernelKeywords combinedKernelKeywords = null)
         {
             var properties = (EVENT_TRACE_PROPERTIES*)propertyBuff;
-            bool needExtensions = false;
-            if (combinedKernelKeywords != null)
-            {
-                needExtensions = true;
-            }
 
-            if (needExtensions)
+            if (combinedKernelKeywords != null)
             {
                 List<ExtensionItem> extensions = new List<ExtensionItem>();
                 PutEnableFlagsIntoExtensions(extensions, (KernelKeywords)properties->EnableFlags, combinedKernelKeywords);
@@ -434,36 +429,35 @@ namespace Microsoft.Diagnostics.Tracing
 
             groups[0] = ((int)keywords & (int)~KernelTraceEventParser.NonOSKeywords);
 
-            const int lowerBitsGroupMask = 0x0FFFFFFF;
             if (combinedKernelKeywords.KeywordsGroup1 != KeywordsGroup1.None)
             {
-                groups[1] = (int) combinedKernelKeywords.KeywordsGroup1 & lowerBitsGroupMask;
+                groups[1] = (int)combinedKernelKeywords.KeywordsGroup1.LowerBits();
                 if ((keywords & KernelKeywords.Profile) != 0)
-                    groups[1] |= 0x002;
+                    groups[1] |= (int) KernelKeywords.Thread;
                 if ((keywords & KernelKeywords.ReferenceSet) != 0)
                 {
-                    groups[1] |= (int) (KeywordsGroup1.Memory | KeywordsGroup1.FootPrint | KeywordsGroup1.MemoryInfo | KeywordsGroup1.MemoryInfoWorkingSet | KeywordsGroup1.Session | KeywordsGroup1.ReferenceSet) & lowerBitsGroupMask;
+                    groups[1] |= (int) (KeywordsGroup1.Memory | KeywordsGroup1.FootPrint | KeywordsGroup1.MemoryInfo | KeywordsGroup1.MemoryInfoWorkingSet | KeywordsGroup1.Session | KeywordsGroup1.ReferenceSet).LowerBits();
                 }
             }
             if (combinedKernelKeywords.KeywordsGroup2 != KeywordsGroup2.None)
             {
-                groups[2] = (int)combinedKernelKeywords.KeywordsGroup2 & lowerBitsGroupMask;
+                groups[2] = (int)combinedKernelKeywords.KeywordsGroup2.LowerBits();
             }
             if (combinedKernelKeywords.KeywordsGroup3 != KeywordsGroup3.None)
             {
-                groups[3] = (int)combinedKernelKeywords.KeywordsGroup3 & lowerBitsGroupMask;
+                groups[3] = (int)combinedKernelKeywords.KeywordsGroup3.LowerBits();
             }
             if (combinedKernelKeywords.KeywordsGroup4 != KeywordsGroup4.None)
             {
-                groups[4] = (int)combinedKernelKeywords.KeywordsGroup4 & lowerBitsGroupMask;
+                groups[4] = (int)combinedKernelKeywords.KeywordsGroup4.LowerBits();
             }
             if (combinedKernelKeywords.KeywordsGroup5 != KeywordsGroup5.None)
             {
-                groups[5] = (int)combinedKernelKeywords.KeywordsGroup5 & lowerBitsGroupMask;
+                groups[5] = (int)combinedKernelKeywords.KeywordsGroup5.LowerBits();
             }
             if (combinedKernelKeywords.KeywordsGroup6 != KeywordsGroup6.None)
             {
-                groups[6] = (int)combinedKernelKeywords.KeywordsGroup6 & lowerBitsGroupMask;
+                groups[6] = (int)combinedKernelKeywords.KeywordsGroup6.LowerBits();
             }
 
             extendedEnableFlags.Data.AddRange(groups);

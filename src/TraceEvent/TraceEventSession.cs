@@ -654,7 +654,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
 
                         // On windows 7 and Vista, fake the systemTraceProvider for real time sessions, and do the EnableKernelProvider on that.
                         var kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName);
-                        var nestedRet = kernelSession.EnableKernelProvider(flags, stackCapture);
+                        var nestedRet = kernelSession.EnableKernelProvider(flags, stackCapture, combinedKernelKeywords, extendedGroupStackCaptureContainer);
                         m_kernelSession = kernelSession;
                         return nestedRet;
                     }
@@ -666,7 +666,7 @@ namespace Microsoft.Diagnostics.Tracing.Session
 
                 // The Profile event requires the SeSystemProfilePrivilege to succeed, so set it.
                 if ((flags & KernelTraceEventParser.Keywords.Profile) != 0 ||
-                     (combinedKernelKeywords.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
+                     (combinedKernelKeywords?.KeywordsGroup1.BitwiseAnd(KernelTraceEventParser.KeywordsGroup1.PMCProfile)) != 0)
                 {
                     TraceEventNativeMethods.SetPrivilege(TraceEventNativeMethods.SE_SYSTEM_PROFILE_PRIVILEGE);
                     double cpu100ns = (CpuSampleIntervalMSec * 10000.0 + .5);
@@ -1964,14 +1964,6 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 curID++;
             }
 
-            // PCM sample profiling
-            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.PMCProfile) != 0)
-            {
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.PerfInfoTaskGuid;
-                stackTracingIds[curID].Type = 0x2f;     // PMC Sample Profile
-                curID++;
-            }
-
             if ((stackCapture & KernelTraceEventParser.Keywords.SystemCall) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.PerfInfoTaskGuid;
@@ -1994,17 +1986,6 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 curID++;
             }
 
-            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.ThreadPriority) != 0)
-            {
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
-                stackTracingIds[curID].Type = 0x30;     // Set Priority
-                curID++;
-
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
-                stackTracingIds[curID].Type = 0x31;     // Set Base Priority
-                curID++;
-            }
-
             if ((stackCapture & KernelTraceEventParser.Keywords.Dispatcher) != 0)
             {
                 stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
@@ -2012,26 +1993,48 @@ namespace Microsoft.Diagnostics.Tracing.Session
                 curID++;
             }
 
-            if ((extendedGroupStackCaptureContainer.KeywordsGroup1 & KernelTraceEventParser.KeywordsGroup1.IOQueue) != 0)
+            if (extendedGroupStackCaptureContainer != null)
             {
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
-                stackTracingIds[curID].Type = 0x3e;     // #define PERFINFO_LOG_TYPE_KQUEUE_ENQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3E)
-                curID++;
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
-                stackTracingIds[curID].Type = 0x3f;     // #define PERFINFO_LOG_TYPE_KQUEUE_DEQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3F)
-                curID++;
-            }
-            if ((extendedGroupStackCaptureContainer.KeywordsGroup4 & KernelTraceEventParser.KeywordsGroup4.Handle) != 0)
-            {
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
-                stackTracingIds[curID].Type = 0x20;     // PERFINFO_LOG_TYPE_CREATE_HANDLE                (EVENT_TRACE_GROUP_OBJECT | 0x20)
-                curID++;
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
-                stackTracingIds[curID].Type = 0x21;     // PERFINFO_LOG_TYPE_CLOSE_HANDLE                 (EVENT_TRACE_GROUP_OBJECT | 0x21)
-                curID++;
-                stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
-                stackTracingIds[curID].Type = 0x22;     // PERFINFO_LOG_TYPE_DUPLICATE_HANDLE             (EVENT_TRACE_GROUP_OBJECT | 0x22)
-                curID++;
+                // PCM sample profiling
+                if ((extendedGroupStackCaptureContainer.KeywordsGroup1.BitwiseAnd(KernelTraceEventParser.KeywordsGroup1.PMCProfile)) != 0)
+                {
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.PerfInfoTaskGuid;
+                    stackTracingIds[curID].Type = 0x2f;     // PMC Sample Profile
+                    curID++;
+                }
+
+                if ((extendedGroupStackCaptureContainer.KeywordsGroup1.BitwiseAnd(KernelTraceEventParser.KeywordsGroup1.ThreadPriority)) != 0)
+                {
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
+                    stackTracingIds[curID].Type = 0x30;     // Set Priority
+                    curID++;
+
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
+                    stackTracingIds[curID].Type = 0x31;     // Set Base Priority
+                    curID++;
+                }
+
+                if ((extendedGroupStackCaptureContainer.KeywordsGroup1.BitwiseAnd(KernelTraceEventParser.KeywordsGroup1.IOQueue) != 0))
+                {
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
+                    stackTracingIds[curID].Type = 0x3e;     // #define PERFINFO_LOG_TYPE_KQUEUE_ENQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3E)
+                    curID++;
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ThreadTaskGuid;
+                    stackTracingIds[curID].Type = 0x3f;     // #define PERFINFO_LOG_TYPE_KQUEUE_DEQUEUE            (EVENT_TRACE_GROUP_THREAD | 0x3F)
+                    curID++;
+                }
+                if ((extendedGroupStackCaptureContainer.KeywordsGroup4.BitwiseAnd(KernelTraceEventParser.KeywordsGroup4.Handle) != 0))
+                {
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
+                    stackTracingIds[curID].Type = 0x20;     // PERFINFO_LOG_TYPE_CREATE_HANDLE                (EVENT_TRACE_GROUP_OBJECT | 0x20)
+                    curID++;
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
+                    stackTracingIds[curID].Type = 0x21;     // PERFINFO_LOG_TYPE_CLOSE_HANDLE                 (EVENT_TRACE_GROUP_OBJECT | 0x21)
+                    curID++;
+                    stackTracingIds[curID].EventGuid = KernelTraceEventParser.ObjectTaskGuid;
+                    stackTracingIds[curID].Type = 0x22;     // PERFINFO_LOG_TYPE_DUPLICATE_HANDLE             (EVENT_TRACE_GROUP_OBJECT | 0x22)
+                    curID++;
+                }
             }
 
             // Image

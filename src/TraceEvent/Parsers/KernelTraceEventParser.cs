@@ -3286,6 +3286,63 @@ namespace Microsoft.Diagnostics.Tracing.Parsers
         internal static readonly Guid LbrTaskGuid = new Guid(unchecked((int)0x99134383), unchecked((short)0x5248), 0x43fc, 0x83, 0x4b, 0x52, 0x94, 0x54, 0xe7, 0x5d, 0xf3);
         #endregion
     }
+
+    #region Kernel Group Masks (Extended Keywords) Static Extensions
+    public static class BitMaskedEnumExtensions
+    {
+        private static uint GetHighBitMask<T>() where T : Enum
+        {
+            // Get first non-zero value
+            var firstValue = Convert.ToUInt32(Enum.GetValues(typeof(T)).Cast<T>().Skip(1).FirstOrDefault());
+            if (firstValue == 0) return 0;
+
+            // Extract just the highest set bit
+            uint highBit = 0;
+            for (int i = 31; i >= 0; i--)
+            {
+                if ((firstValue & (1u << i)) != 0)
+                {
+                    highBit = 1u << i;
+                    break;
+                }
+            }
+            return highBit;
+        }
+
+        public static uint LowerBits<T>(this T value) where T : Enum
+        {
+            uint enumValue = Convert.ToUInt32(value);
+            return enumValue & ~GetHighBitMask<T>();
+        }
+
+        public static T BitwiseAnd<T>(this T a, T b) where T : Enum
+        {
+            uint aValue = Convert.ToUInt32(a);
+            uint bValue = Convert.ToUInt32(b);
+            uint valueMask = ~GetHighBitMask<T>();
+            uint result = (aValue & valueMask) & (bValue & valueMask);
+            return result == 0 ? (T)Enum.ToObject(typeof(T), 0) : (T)Enum.ToObject(typeof(T), result | GetHighBitMask<T>());
+        }
+
+        public static T BitwiseOr<T>(this T a, T b) where T : Enum
+        {
+            uint aValue = Convert.ToUInt32(a);
+            uint bValue = Convert.ToUInt32(b);
+            uint valueMask = ~GetHighBitMask<T>();
+            uint result = (aValue & valueMask) | (bValue & valueMask);
+            return result == 0 ? (T)Enum.ToObject(typeof(T), 0) : (T)Enum.ToObject(typeof(T), result | GetHighBitMask<T>());
+        }
+
+        public static bool HasFlag<T>(this T value, T flag) where T : Enum
+        {
+            uint valueInt = Convert.ToUInt32(value);
+            uint flagInt = Convert.ToUInt32(flag);
+            uint valueMask = ~GetHighBitMask<T>();
+            return (valueInt & valueMask & flagInt) == (flagInt & valueMask);
+        }
+    }
+    #endregion
+
     #region private types
     /// <summary>
     /// KernelTraceEventParserState holds all information that is shared among all events that is
